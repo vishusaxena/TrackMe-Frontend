@@ -40,6 +40,7 @@ export const handleFileUpload = (event, setForm) => {
       imageBase64: base64String,
       imageName: fileName,
       imageExtension: fileExtension,
+      isgoogleLoggedIn: true, // Set to false when user uploads a new image
     }));
   };
 

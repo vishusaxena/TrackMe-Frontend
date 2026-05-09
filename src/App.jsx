@@ -5,6 +5,8 @@ import { ToastContainer } from "react-toastify";
 import PublicRoutes from "./routes/PublicRoutes";
 import ProtectedRoute from "./routes/ProtectedRoutes";
 import FullPageLoader from "./components/common/Loader";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import MasterPage from "./pages/Masters";
 
 const Home = React.lazy(() => import("./pages/Home"));
 const Login = React.lazy(() => import("./pages/Login"));
@@ -22,6 +24,13 @@ const Profile = React.lazy(() => import("./pages/Profile"));
 const Settings = React.lazy(() => import("./pages/Settings"));
 
 const App = () => {
+
+  const GoogleAuthWrapper = () => {
+    return <GoogleOAuthProvider clientId="173745826712-lddfup40edu6gj158gghseua5gjcn4gb.apps.googleusercontent.com">
+      <Login />
+    </GoogleOAuthProvider>
+
+  }
   return (
     <div>
       <ToastContainer />
@@ -49,7 +58,7 @@ const App = () => {
               <Route path="todo" element={<Todo />} />
               <Route path="projects" element={<Projects />} />
               <Route path="journal" element={<Blogs />} />
-              <Route path="vault" element={<CodeVault />} />
+              <Route path="master" element={<MasterPage />} />
               <Route path="study" element={<StudyPlan />} />
               <Route path="lab" element={<InnovationLab />} />
               <Route path="settings" element={<Settings />} />
@@ -69,7 +78,7 @@ const App = () => {
               path="/login"
               element={
                 <PublicRoutes>
-                  <Login />
+                  <GoogleAuthWrapper />
                 </PublicRoutes>
               }
             />

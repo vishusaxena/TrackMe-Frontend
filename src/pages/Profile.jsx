@@ -20,7 +20,8 @@ const Profile = () => {
         bio: "Building the next generation of developer tools.",
         imageName: "",
         imageBase64: "",
-        imageExtension: ""
+        imageExtension: "",
+        isgoogleLoggedIn: false,
     });
     const [isLoading, setIsLoading] = useState(false);
 
@@ -37,7 +38,7 @@ const Profile = () => {
         setIsLoading(true);
         const res = await ApiCall("/api/auth/profile");
         if (res.status === "success") {
-            const { firstname, lastname, email, imageName, imageBase64, imageExtension, role, bio } = res.data;
+            const { firstname, lastname, email, imageName, imageBase64, imageExtension, role, bio, isgoogleLoggedIn } = res.data;
             setProfile((prev) => ({
                 ...prev,
                 firstname,
@@ -48,6 +49,7 @@ const Profile = () => {
                 imageExtension,
                 role,
                 bio,
+                isgoogleLoggedIn
             }));
             dispatch(setCredentials({ user: { firstname, lastname, email, imageBase64 } })); // Update Redux store with latest profile data
         }
@@ -96,8 +98,13 @@ const Profile = () => {
                                 <div className="relative group cursor-pointer" onClick={() => fileInputRef.current.click()}>
                                     <div className="w-40 h-40 rounded-3xl overflow-hidden border-2 border-white/10 group-hover:border-blue-500/50 transition-all duration-500 shadow-2xl">
                                         <img
-                                            src={profile.imageBase64 ? `data:image/${profile.imageExtension};base64,${profile.imageBase64}` : "https://i.pravatar.cc/160?img=32"}
-                                            alt="Profile"
+                                            src={
+                                                profile.imageBase64
+                                                    ? !profile.isgoogleLoggedIn
+                                                        ? profile.imageBase64
+                                                        : `data:image/${profile.imageExtension};base64,${profile.imageBase64}`
+                                                    : "https://i.pravatar.cc/160?img=32"
+                                            } alt="Profile"
                                             className="w-full h-full object-fit grayscale group-hover:grayscale-0 transition-all duration-500 group-hover:scale-110"
                                         />
                                     </div>

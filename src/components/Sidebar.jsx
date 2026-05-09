@@ -38,7 +38,7 @@ const Sidebar = () => {
 
         { icon: <PenLine size={18} />, label: 'DEV JOURNAL', path: "/dashboard/journal", active: true },
 
-        { icon: <Boxes size={18} />, label: 'CODE VAULT', path: "/dashboard/vault", active: false },
+        { icon: <Boxes size={18} />, label: 'MASTERS', path: "/dashboard/master", active: true },
 
         { icon: <BookOpen size={18} />, label: 'STUDY OS', path: "/dashboard/study", active: false },
 

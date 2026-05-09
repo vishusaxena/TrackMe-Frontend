@@ -72,7 +72,7 @@ const Todo = () => {
 
   const handleAddTask = async (id) => {
     console.log("i am here", id);
-    console.log("Selected Todo Details with new remark:", selectedTodoDetails);
+    console.log("Selected Todo Details with new remark:", todo);
     let data = {};
     if (id) {
       data = {

@@ -3,7 +3,6 @@ import React, { useState } from "react";
 const Tooltip = ({ children, text, position = "top" }) => {
     const [isVisible, setIsVisible] = useState(false);
 
-    // Position Logic
     const positionClasses = {
         top: "bottom-full left-1/2 -translate-x-1/2 mb-3",
         bottom: "top-full left-1/2 -translate-x-1/2 mt-3",
@@ -11,7 +10,6 @@ const Tooltip = ({ children, text, position = "top" }) => {
         right: "left-full top-1/2 -translate-y-1/2 ml-3",
     };
 
-    // Arrow Logic (matches the position)
     const arrowClasses = {
         top: "top-full left-1/2 -translate-x-1/2 border-t-zinc-800",
         bottom: "bottom-full left-1/2 -translate-x-1/2 border-b-zinc-800",

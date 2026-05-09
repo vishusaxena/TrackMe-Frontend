@@ -56,7 +56,13 @@ const Navbar = () => {
                             className="flex items-center gap-2 p-1 pr-2 rounded-2xl bg-white/3 border border-white/8 hover:border-white/20 transition-all"
                         >
                             <img
-                                src={user.imageBase64 ? `data:image/jpeg;base64,${user.imageBase64}` : "https://i.pravatar.cc/40?img=32"}
+                                src={
+                                    user?.imageBase64
+                                        ? !user?.googleLoggedIn
+                                            ? user.imageBase64
+                                            : `data:image/jpeg;base64,${user.imageBase64}`
+                                        : "https://i.pravatar.cc/40?img=32"
+                                }
                                 alt="User"
                                 className="w-8 h-8 rounded-xl object-cover grayscale hover:grayscale-0 transition-all"
                             />

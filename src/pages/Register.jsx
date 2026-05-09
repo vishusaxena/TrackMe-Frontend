@@ -12,7 +12,6 @@ const Register = () => {
     const handleRegister = async (e) => {
         e.preventDefault();
         try {
-            console.log(formData);
             const res = await axios.post(
                 "http://localhost:5000/api/auth/register",
                 formData
@@ -26,10 +25,8 @@ const Register = () => {
 
 
     return (
-        // Fixed height and overflow-hidden prevents page scrolling
         <div className="h-screen w-full flex bg-white selection:bg-violet-100 overflow-hidden">
 
-            {/* Right Side: Form (Order 1 on mobile, 1 on desktop) */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12">
                 <div className="w-full max-w-md">
                     <div className="mb-8">
@@ -77,16 +74,12 @@ const Register = () => {
                 </div>
             </div>
 
-            {/* Left Side: Illustration / Visual (Order 2) */}
             <div className="hidden lg:flex w-1/2 relative bg-slate-900 items-center justify-center p-12">
-                {/* Animated Architectural Pattern */}
                 <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#818cf8_0.5px,transparent_0.5px)] bg-size-[24px_24px]" />
 
-                {/* Soft Vector Aura */}
                 <div className="absolute w-125 h-125 bg-violet-600/20 rounded-full blur-[120px]" />
 
                 <div className="relative z-10 w-full max-w-lg">
-                    {/* Mockup "Illustrator" Style Component */}
                     <div className="relative bg-white/5 backdrop-blur-xl rounded-4xl border border-white/10 p-8 shadow-2xl overflow-hidden group">
 
                         {/* Top Bar Decoration */}

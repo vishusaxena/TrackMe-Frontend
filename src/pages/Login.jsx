@@ -3,6 +3,8 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import secureLocalStorage from "react-secure-storage";
 import { toast } from "react-toastify";
+import { useGoogleLogin } from "@react-oauth/google";
+import { ApiCall } from "../utils/Hooks";
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -29,6 +31,30 @@ const Login = () => {
       console.error(error.response?.data || error.message);
     }
   };
+
+  const responseGoogel = async (response) => {
+    try {
+      if (response['code']) {
+        const res = await ApiCall("/api/auth/google-login", { code: response.code });
+        console.log(res);
+        secureLocalStorage.setItem("token", res.token)
+        secureLocalStorage.setItem("user", { firstname: res.user.firstName, lastname: res.user.lastName, email: res.user.email, imageBase64: res.user.imageBase64 }) // Store user info in secure local storage  
+        navigate("/")
+        notify(`Welcome, ${res.user.firstName} ${res.user.lastName}`);
+      }
+    }
+    catch (error) {
+      console.error(error.response?.data || error.message);
+    }
+  }
+
+  const googleLogin = useGoogleLogin({
+    onSuccess: responseGoogel,
+    onError: responseGoogel,
+    flow: "auth-code"
+  })
+
+
   return (
     <div className="min-h-screen w-full flex bg-[#fafafa] selection:bg-violet-100">
 
@@ -91,7 +117,7 @@ const Login = () => {
           </form>
 
           <div className="mt-8 pt-8 border-t border-slate-100 flex flex-col gap-4">
-            <button className="w-full py-3 px-4 border border-slate-200 rounded-xl flex items-center justify-center gap-3 font-semibold text-slate-700 hover:bg-slate-50 transition-colors">
+            <button className="w-full py-3 px-4 border border-slate-200 rounded-xl flex items-center justify-center gap-3 font-semibold text-slate-700 hover:bg-slate-50 transition-colors" onClick={googleLogin}>
               <img src="https://www.svgrepo.com/show/355037/google.svg" className="w-5 h-5" alt="Google" />
               Sign in with Google
             </button>
