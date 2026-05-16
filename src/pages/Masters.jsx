@@ -1,187 +1,453 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import DataTable from '../components/common/DataTable';
+import Input from '../components/common/Input';
+import { ArrowLeft, Trash2, GripVertical, Plus, Info } from 'lucide-react';
+import Box from '../components/common/Box';
+import Select from '../components/common/SelectInput';
+import DarkModeSwitch from '../components/common/Switch';
+import { toast } from 'react-toastify';
+import DarkModeFileUploader, { CompactFileUploader } from '../components/common/FileUploader';
+import MultiSelect from '../components/common/MultiSelect';
+import { ApiCall } from '../utils/Hooks';
+import DateBox from '../components/common/DateBox';
 
 const MasterPage = () => {
-    // State for Tabs and Modal
     const [activeTab, setActiveTab] = useState('Skills Master');
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [showBuilder, setShowBuilder] = useState(false);
+    const [fileKey, setFileKey] = useState(0);
+    const [publicApis, setPublicApi] = useState({
+        skills: "",
+        certificates: "",
+    });
+    const [skill, setSkill] = useState({
+        skillId: "",
+        skillName: "",
+        level: "",
+        category: "",
+        isActive: true,
+    })
+    const [certificate, setCertificate] = useState({
+        certificateId: "",
+        certificateName: "",
+        issuer: "",
+        issueDate: "",
+        file: {},
+        fileUrl: "",
+        skillsCovered: [],
+        isActive: true,
+    })
+    const [skillSet, setSkillSet] = useState([]);
+    const [certificateSet, setCertificateSet] = useState([]);
+    const masters = [
+        {
+            name: 'Skills Master',
+            fields: ['Skill Name', 'Level', 'Category', 'Active'],
+            data: skillSet,
+        },
+        {
+            name: 'Certificate Master',
+            fields: ['certificateName', 'issuer', 'issueDate', 'fileUrl', 'isActive'],
+            data: certificateSet,
+        },
+    ];
 
-    // Dynamic Master Definitions (to simulate saved masters)
-    const [masters, setMasters] = useState([
-        { name: 'Skills Master', fields: ['Skill Name', 'Level', 'Category'] },
-        { name: 'Certificate Master', fields: ['Certificate Name', 'Issuer', 'Expiry Date'] }
-    ]);
+    const activeIdx = masters.findIndex(
+        (master) => master.name === activeTab
+    );
 
-    const activeMaster = masters.find(m => m.name === activeTab) || masters[0];
+    const skillOptions = skillSet.map((skill) => { return skill["Skill Name"] });
+
+    const GetSkills = async () => {
+        try {
+            const res = await ApiCall("/api/masters/skills/GetSkills");
+            if (res.status === "success") {
+                const formattedSkills = res.data.map((s) => ({
+                    "Skill ID": s._id,
+                    "Skill Name": s.skillName,
+                    "Level": s.level,
+                    "Category": s.category,
+                    "Active": s.isActive ? "Yes" : "No"
+                }));
+                setSkillSet(formattedSkills);
+                setPublicApi(prev => ({ ...prev, skills: res.publicApi }));
+            } else {
+                toast.error(res.message || "Failed to fetch skills");
+            }
+        } catch (error) {
+            toast.error("An error occurred while fetching skills");
+        }
+
+    }
+
+    const GetCertificates = async () => {
+        try {
+            const res = await ApiCall("/api/masters/certificates/GetCertificates");
+            if (res.status === "success") {
+                const formattedCertificates = res.data.map((c) => ({
+                    "CertificateId": c._id,
+                    "certificateName": c.certificateName,
+                    "issuer": c.issuer,
+                    "issueDate": c.issueDate,
+                    "fileUrl": c.fileUrl,
+                    "isActive": c.isActive ? "Yes" : "No"
+                }));
+                setCertificateSet(formattedCertificates);
+                setPublicApi(prev => ({ ...prev, certificates: res.publicApi }));
+            } else {
+                toast.error(res.message || "Failed to fetch certificates");
+            }
+        } catch (error) {
+            toast.error("An error occurred while fetching certificates");
+        }
+    }
+
+
+    const handleSkillAdd = async () => {
+        if (!skill.skillName || !skill.level || !skill.category) {
+            toast.error("Please fill all skill fields");
+            return;
+        }
+        try {
+            const res = await ApiCall("/api/masters/skills/InsertUpdateSkill", skill);
+            console.log(res);
+            if (res.status === "success") {
+                toast.success(res.message);
+                // setSkillSet((prev) => [...prev, { "Skill Name": skill.skillName, "Level": skill.level, "Category": skill.category, "Active": skill.isActive ? "Yes" : "No" }])
+
+                GetSkills();
+                handleSkillReset();
+            } else {
+                toast.error(res.message || "Failed to add skill");
+            }
+        }
+        catch (error) {
+            toast.error("An error occurred while adding the skill");
+            return;
+        }
+    }
+
+    const GetSkillById = async (id) => {
+        console.log("Fetching skill with ID:", id);
+        try {
+            const res = await ApiCall(`/api/masters/skills/GetSkillById`, { skillId: id });
+            if (res.status === "success") {
+                setSkill({
+                    skillId: res.data._id,
+                    skillName: res.data.skillName,
+                    level: res.data.level,
+                    category: res.data.category,
+                    isActive: res.data.isActive,
+                })
+            }
+        } catch (error) {
+            toast.error("An error occurred while fetching skill details");
+        }
+    }
+    const handleCertificateAdd = async () => {
+        if (!certificate.certificateName || !certificate.issuer || certificate.skillsCovered.length === 0) {
+            toast.error("Please fill all certificate fields");
+            return;
+        }
+
+        // ✅ Add file validation
+        if (!certificate.file) {
+            toast.error("Please upload a certificate file");
+            return;
+        }
+
+        try {
+            const res = await ApiCall("/api/masters/certificates/InsertUpdateCertificate", certificate);
+            console.log(res);
+            if (res.status === "success") {
+                toast.success(res.message);
+                GetCertificates();
+                // setSkillSet((prev) => [...prev, { "Skill Name": skill.skillName, "Level": skill.level, "Category": skill.category, "Active": skill.isActive ? "Yes" : "No" }])
+                // setCertificateSet((prev) => [
+                //     ...prev,
+                //     {
+                //         name: certificate.certificateName,
+                //         issuer: certificate.issuer,
+                //         file: certificate.file?.name ?? certificate.file,
+                //         fileUrl: certificate.fileUrl,
+                //         skillsCovered: certificate.skillsCovered,
+                //         active: certificate.isActive ? "Yes" : "No",
+                //     },
+                // ]);
+                handleCertificateReset();
+
+            } else {
+                toast.error(res.message || "Failed to add certificate");
+            }
+        }
+        catch (error) {
+            toast.error("An error occurred while adding the skill");
+            return;
+        }
+
+
+
+    };
+    const handleCertificateReset = () => {
+        setCertificate({
+            certificateId: "",
+            certificateName: "",
+            issuer: "",
+            issueDate: "",
+            file: "",
+            fileUrl: "",
+            skillsCovered: [],
+            isActive: true,
+        })
+        setFileKey((prev) => prev + 1);
+    }
+
+    const handleSkillReset = () => {
+        setSkill({
+            skillId: "",
+            skillName: "",
+            level: "",
+            category: "",
+            isActive: true,
+        })
+    }
+
+    useEffect(() => {
+        GetSkills();
+        GetCertificates();
+    }, []);
 
     return (
         <div className="flex-1 h-screen flex flex-col bg-[#030303] text-zinc-100 overflow-hidden font-sans">
 
-            {/* 1. TOP HEADER */}
+            {/* TOP HEADER */}
             <div className="flex justify-between items-end p-8 pb-6">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Configuration <span className="text-violet-500">Masters</span></h1>
+                    <h1 className="text-3xl font-bold tracking-tight">
+                        Configuration <span className="text-violet-500">Masters</span>
+                    </h1>
                     <p className="text-zinc-500 text-sm mt-1">Manage dynamic data structures and records.</p>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-violet-600/20 active:scale-95"
-                >
-                    + Add New Master
-                </button>
-            </div>
 
-            {/* 2. TABS SYSTEM */}
-            <div className="px-8 flex gap-8 border-b border-zinc-900 overflow-x-auto no-scrollbar">
-                {masters.map((m) => (
+                {!showBuilder && (
                     <button
-                        key={m.name}
-                        onClick={() => setActiveTab(m.name)}
-                        className={`pb-4 text-sm font-medium whitespace-nowrap transition-all relative ${activeTab === m.name ? 'text-violet-500' : 'text-zinc-500 hover:text-zinc-300'
-                            }`}
+                        onClick={() => setShowBuilder(true)}
+                        className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all shadow-lg shadow-violet-600/20 active:scale-95"
                     >
-                        {m.name}
-                        {activeTab === m.name && (
-                            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-500 shadow-[0_-4px_10px_rgba(139,92,246,0.5)]" />
-                        )}
+                        + Add New Master
                     </button>
-                ))}
+                )}
             </div>
 
-            {/* 3. MAIN CONTENT AREA (Scrollable) */}
-            <div className="flex-1 overflow-y-auto p-8 space-y-6">
-
-                {/* DYNAMIC INPUT FORM */}
-                <div className="bg-[#0a0a0a] border border-zinc-800/50 p-6 rounded-2xl shadow-sm">
-                    <h2 className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-6">Add New {activeMaster.name} Entry</h2>
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                        {activeMaster.fields.map((field) => (
-                            <div key={field} className="flex flex-col gap-2">
-                                <label className="text-xs text-zinc-500 ml-1">{field}</label>
-                                <input
-                                    type="text"
-                                    placeholder={`Enter ${field.toLowerCase()}...`}
-                                    className="bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-violet-500 transition-all"
-                                />
-                            </div>
+            {/* MAIN TOGGLE LOGIC */}
+            {!showBuilder ? (
+                <>
+                    {/* TABS SYSTEM */}
+                    <div className="px-8 flex gap-8 border-b border-zinc-900 overflow-x-auto no-scrollbar">
+                        {masters.map((m) => (
+                            <button
+                                key={m.name}
+                                onClick={() => setActiveTab(m.name)}
+                                className={`pb-4 text-sm font-medium whitespace-nowrap transition-all relative ${activeTab === m.name ? 'text-violet-500' : 'text-zinc-500 hover:text-zinc-300'}`}
+                            >
+                                {m.name}
+                                {activeTab === m.name && (
+                                    <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-violet-500 shadow-[0_-4px_10px_rgba(139,92,246,0.5)]" />
+                                )}
+                            </button>
                         ))}
-                        <div className="flex gap-2">
-                            <button className="flex-1 bg-zinc-800 hover:bg-zinc-700 py-2.5 rounded-lg text-sm font-medium transition-colors">Reset</button>
-                            <button className="flex-1 bg-violet-600 hover:bg-violet-700 py-2.5 rounded-lg text-sm font-medium transition-colors">Add</button>
-                        </div>
                     </div>
-                </div>
 
-                {/* DATA TABLE SECTION */}
-                <div className="bg-[#0a0a0a] border border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
-                    {/* Table Toolbar */}
-                    <div className="p-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-950/30">
-                        <div className="flex items-center gap-3 w-1/3">
-                            <input
-                                type="text"
-                                placeholder="Filter records..."
-                                className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
+                    {/* VIEW: DATA TABLE */}
+                    <div className="flex-1 overflow-y-auto p-8 space-y-6">
+                        {activeTab === "Skills Master" && <Box onAdd={handleSkillAdd} onReset={handleSkillReset} title={`Add New ${activeTab === 'Skills Master' ? 'Skill' : 'Certificate'}`} publicApi={publicApis.skills}>
+                            <Input label="Skill Name" onChange={(e) => setSkill({ ...skill, skillName: e.target.value })} value={skill.skillName} placeholder="Skill Name" />
+                            <Select label="Level" options={[{ label: 'Beginner', value: 'beginner' }, { label: 'Intermediate', value: 'intermediate' }, { label: 'Advanced', value: 'advanced' }, { label: 'Expert', value: 'expert' }]} onChange={(val) => setSkill({ ...skill, level: val })} value={skill.level} />
+                            <Select label="Category" options={[{ label: 'Frontend', value: 'frontend' }, { label: 'Backend', value: 'backend' }, { label: 'DevOps', value: 'devops' }, { label: 'Mobile', value: 'mobile' }, { label: 'Database', value: 'database' }]} onChange={(val) => setSkill({ ...skill, category: val })} value={skill.category} />
+
+                            <DarkModeSwitch label="Active" checked={skill.isActive} onChange={(val) => setSkill({ ...skill, isActive: val })} />
+                        </Box>}
+
+                        {activeTab === "Certificate Master" && <Box onAdd={handleCertificateAdd} onReset={handleCertificateReset} title={`Add New ${activeTab === 'Skills Master' ? 'Skill' : 'Certificate'}`} publicApi={publicApis.certificates}>
+                            <Input
+                                label="Certificate Name"
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCertificate((prev) => ({ ...prev, certificateName: val }));
+                                }}
+                                value={certificate.certificateName}
+                                placeholder="Certificate Name"
                             />
-                        </div>
-                        <div className="flex gap-2 items-center text-xs text-zinc-500">
-                            <span>Showing 1-10 of 42</span>
-                            <div className="flex gap-1 ml-4">
-                                <button className="p-1.5 hover:bg-zinc-800 rounded border border-zinc-800 transition-colors">Prev</button>
-                                <button className="p-1.5 hover:bg-zinc-800 rounded border border-zinc-800 transition-colors">Next</button>
+
+                            <Input
+                                label="Issuer"
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    setCertificate((prev) => ({ ...prev, issuer: val }));
+                                }}
+                                value={certificate.issuer}
+                                placeholder="Issuer"
+                            />
+                            <DateBox label="Issue Date" value={certificate.issueDate}
+                                onChange={(e) => setCertificate((prev) => ({ ...prev, issueDate: e.target.value }))} />
+
+                            <MultiSelect
+                                label="Skills"
+                                options={skillOptions}
+                                selectedValues={certificate.skillsCovered}
+                                onChange={(val) =>
+                                    setCertificate((prev) => ({ ...prev, skillsCovered: val }))
+                                }
+                            />
+                            <CompactFileUploader
+                                key={fileKey} // 👈 forces remount on reset
+                                onChange={(file) =>
+                                    setCertificate((prev) => ({   // 👈 use prev, not stale certificate
+                                        ...prev,
+                                        file: file ?? "",
+                                        fileUrl: file ? URL.createObjectURL(file) : "",
+                                    }))
+                                }
+
+                            />
+                            <DarkModeSwitch label="Active" checked={certificate.isActive} onChange={(val) => setCertificate((prev) => ({ ...prev, isActive: val }))} />
+                        </Box>}
+                        <DataTable
+                            fields={masters[activeIdx]?.fields}
+                            data={masters[activeIdx]?.data}
+                            totalRecords={masters[activeIdx]?.data?.length || 0}
+                            onEdit={(id) => activeTab === "Skills Master" ? GetSkillById(id) : null}
+                            onDelete={(id) => activeTab === "Skills Master" ? DeleteSkill(id) : null}
+                        />
+                    </div>
+                </>
+            ) : (
+                /* VIEW: MASTER BUILDER (The UI from the image) */
+                <div className="flex-1 flex flex-col overflow-hidden bg-[#030303]">
+                    {/* Builder Sub-Header */}
+                    <div className="px-8 py-4 border-b border-zinc-900 flex justify-between items-center bg-zinc-950/30">
+                        <div className="flex items-center gap-4">
+                            <button
+                                onClick={() => setShowBuilder(false)}
+                                className="p-2 hover:bg-zinc-800 rounded-full transition-colors text-zinc-400 hover:text-white"
+                            >
+                                <ArrowLeft size={20} />
+                            </button>
+                            <div>
+                                <h2 className="text-lg font-semibold">Create New Master</h2>
+                                <p className="text-xs text-zinc-500">Define fields and data types for your new collection</p>
                             </div>
+                        </div>
+                        <div className="flex gap-3">
+                            <button onClick={() => setShowBuilder(false)} className="px-5 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors">Cancel</button>
+                            <button className="bg-violet-600 hover:bg-violet-700 px-6 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-violet-600/20">Save Master</button>
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-zinc-900/20 text-zinc-500 text-[11px] uppercase tracking-widest">
-                                    <th className="px-6 py-4 font-semibold">ID</th>
-                                    {activeMaster.fields.map(field => (
-                                        <th key={field} className="px-6 py-4 font-semibold">{field}</th>
-                                    ))}
-                                    <th className="px-6 py-4 font-semibold">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-zinc-900/50">
-                                {[1, 2, 3, 4].map((item) => (
-                                    <tr key={item} className="hover:bg-zinc-900/30 transition-colors group">
-                                        <td className="px-6 py-4 text-xs text-zinc-500">#REC-{100 + item}</td>
-                                        {activeMaster.fields.map(f => (
-                                            <td key={f} className="px-6 py-4 text-sm text-zinc-300">Data Point {item}</td>
-                                        ))}
-                                        <td className="px-6 py-4">
-                                            <div className="w-8 h-4 bg-zinc-800 rounded-full relative p-0.5 cursor-pointer">
-                                                <div className="w-3 h-3 bg-violet-500 rounded-full absolute right-0.5" />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+                    {/* Builder Content Area */}
+                    <div className="flex-1 flex overflow-hidden p-8 gap-8">
 
-            {/* 4. "CREATE NEW MASTER" MODAL */}
-            {isModalOpen && (
-                <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-50">
-                    <div className="bg-[#0a0a0a] border border-zinc-800 w-full max-w-lg rounded-2xl p-8 shadow-2xl animate-in fade-in zoom-in duration-200">
-                        <h2 className="text-2xl font-bold mb-2">Configure Master</h2>
-                        <p className="text-zinc-500 text-sm mb-8 border-b border-zinc-900 pb-4">Define the structure for your new master data table.</p>
-
-                        <div className="space-y-6">
-                            {/* Master Name */}
-                            <div className="flex flex-col gap-2">
-                                <label className="text-xs font-semibold text-zinc-400">Master Name</label>
-                                <input
-                                    type="text"
-                                    placeholder="e.g. Skill Master"
-                                    className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 focus:ring-1 focus:ring-violet-500 outline-none"
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Number of Fields */}
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-semibold text-zinc-400">Number of Fields</label>
-                                    <input
-                                        type="number"
-                                        defaultValue={3}
-                                        className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 focus:ring-1 focus:ring-violet-500 outline-none"
-                                    />
+                        {/* LEFT: Field Configuration */}
+                        <div className="flex-1 overflow-y-auto pr-4 space-y-10 no-scrollbar">
+                            <section>
+                                <div className="flex items-center gap-4 mb-6">
+                                    <span className="w-8 h-8 rounded-full bg-violet-600/20 text-violet-500 flex items-center justify-center font-bold border border-violet-500/30">1</span>
+                                    <h3 className="text-xl font-semibold">Master Details</h3>
                                 </div>
-                                {/* Field Type Selection */}
-                                <div className="flex flex-col gap-2">
-                                    <label className="text-xs font-semibold text-zinc-400">Primary Field Type</label>
-                                    <select className="bg-zinc-900 border border-zinc-800 rounded-xl p-3 focus:ring-1 focus:ring-violet-500 outline-none text-sm text-zinc-400">
-                                        <option>Text Input</option>
-                                        <option>Numeric</option>
-                                        <option>Date Picker</option>
-                                        <option>Dropdown List</option>
-                                    </select>
+                                <div className="ml-12 max-w-2xl">
+                                    <label className="block text-sm font-medium text-zinc-400 mb-2">Master Name <span className="text-red-500">*</span></label>
+                                    <input className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 focus:border-violet-500 outline-none text-white transition-all" placeholder="e.g. Employee Master" />
                                 </div>
-                            </div>
+                            </section>
 
-                            {/* Options/Switches */}
-                            <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-900">
-                                <label className="flex items-center gap-3 cursor-pointer group">
-                                    <input
-                                        type="checkbox"
-                                        defaultChecked
-                                        className="w-5 h-5 rounded-md border-zinc-700 bg-zinc-900 text-violet-600 focus:ring-violet-500 transition-all"
-                                    />
-                                    <div>
-                                        <p className="text-sm font-medium group-hover:text-violet-400 transition-colors">Include Active/Inactive Switch</p>
-                                        <p className="text-[10px] text-zinc-600 uppercase">System will add a status toggle by default</p>
+                            <section>
+                                <div className="flex justify-between items-center mb-6">
+                                    <div className="flex items-center gap-4">
+                                        <span className="w-8 h-8 rounded-full bg-violet-600/20 text-violet-500 flex items-center justify-center font-bold border border-violet-500/30">2</span>
+                                        <h3 className="text-xl font-semibold">Define Fields</h3>
                                     </div>
-                                </label>
+                                    <button className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-4 py-2 rounded-xl text-sm transition-all">
+                                        <Plus size={16} /> Add Field
+                                    </button>
+                                </div>
+
+                                <div className="ml-12 border border-zinc-800 rounded-2xl overflow-hidden bg-[#0a0a0a]">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-zinc-900/50 border-b border-zinc-800">
+                                            <tr className="text-zinc-500 text-xs uppercase tracking-wider">
+                                                <th className="p-4 font-semibold">#</th>
+                                                <th className="p-4 font-semibold">Field Label</th>
+                                                <th className="p-4 font-semibold">Type</th>
+                                                <th className="p-4 font-semibold text-center">Required</th>
+                                                <th className="p-4 font-semibold text-center">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-zinc-800/50 text-sm">
+                                            {[1, 2, 3].map((item) => (
+                                                <tr key={item} className="group hover:bg-zinc-900/40">
+                                                    <td className="p-4">
+                                                        <div className="flex items-center gap-3 text-zinc-600">
+                                                            <GripVertical size={14} className="cursor-grab" />
+                                                            {item}
+                                                        </div>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 focus:border-violet-500 outline-none transition-all" defaultValue={item === 1 ? "Employee Name" : ""} />
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <select className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 outline-none">
+                                                            <option>Text</option>
+                                                            <option>Number</option>
+                                                            <option>Date</option>
+                                                        </select>
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        <input type="checkbox" className="w-4 h-4 accent-violet-600" />
+                                                    </td>
+                                                    <td className="p-3 text-center">
+                                                        <button className="p-2 text-zinc-600 hover:text-red-500 transition-colors">
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    <div className="p-4 bg-violet-950/10 border-t border-zinc-800 flex items-center gap-3 text-xs text-violet-400">
+                                        <Info size={14} />
+                                        <span>Fields can be reordered by dragging the handle on the left side.</span>
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+
+                        {/* RIGHT: Field Picker */}
+                        <div className="w-72 bg-zinc-900/20 border border-zinc-800 rounded-3xl p-6 hidden xl:block">
+                            <h4 className="font-bold text-zinc-200 mb-1">Field Types</h4>
+                            <p className="text-[11px] text-zinc-500 mb-6 uppercase tracking-widest">Click to append</p>
+                            <div className="space-y-3 overflow-y-auto h-[calc(100vh-350px)] pr-2 no-scrollbar">
+                                {[
+                                    { label: 'Text', icon: 'T', desc: 'Single line text' },
+                                    { label: 'Textarea', icon: '¶', desc: 'Multi-line text' },
+                                    { label: 'Number', icon: '123', desc: 'Numeric values' },
+                                    { label: 'Dropdown', icon: '▼', desc: 'Selection list' },
+                                    { label: 'Checkbox', icon: '☑', desc: 'True or false' },
+                                    { label: 'File Upload', icon: '↑', desc: 'Images or docs' }
+                                ].map((type) => (
+                                    <div key={type.label} className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-2xl hover:border-violet-500/50 hover:bg-zinc-800 cursor-pointer transition-all group">
+                                        <div className="flex gap-4 items-center">
+                                            <div className="w-10 h-10 bg-zinc-800 group-hover:bg-violet-600/20 flex items-center justify-center rounded-xl font-bold text-zinc-400 group-hover:text-violet-400 transition-colors">
+                                                {type.icon}
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-semibold text-zinc-300">{type.label}</p>
+                                                <p className="text-[10px] text-zinc-500">{type.desc}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
-                        <div className="flex gap-4 mt-10">
-                            <button onClick={() => setIsModalOpen(false)} className="flex-1 py-3 rounded-xl border border-zinc-800 hover:bg-zinc-900 font-medium transition-colors">Discard</button>
-                            <button className="flex-1 py-3 rounded-xl bg-violet-600 hover:bg-violet-700 font-bold transition-all shadow-lg shadow-violet-600/20">Generate Master</button>
-                        </div>
                     </div>
                 </div>
             )}
