@@ -11,10 +11,31 @@ import MultiSelect from '../components/common/MultiSelect';
 import { ApiCall } from '../utils/Hooks';
 import DateBox from '../components/common/DateBox';
 
+const mapper = {
+    "text": "Input",
+    "select": "Select",
+    "Date": "DateBox",
+}
+
+const ComponentMapper = {
+    "Input:": Input,
+    "Select": Select,
+    "DateBox": DateBox,
+}
+
 const MasterPage = () => {
+    const [dataMap, setDataMap] = useState({});
     const [activeTab, setActiveTab] = useState('Skills Master');
     const [showBuilder, setShowBuilder] = useState(false);
     const [fileKey, setFileKey] = useState(0);
+    const [filters, setFilters] = useState([]);
+    const [master, setMaster] = useState({
+        masterId: "",
+        masterName: "",
+        masterConfig: [],
+    });
+    const [fieldBind, setFieldBind] = useState([]);
+    const [draggingIdx, setDraggingIdx] = useState(null);
     const [publicApis, setPublicApi] = useState({
         skills: "",
         certificates: "",
@@ -38,18 +59,13 @@ const MasterPage = () => {
     })
     const [skillSet, setSkillSet] = useState([]);
     const [certificateSet, setCertificateSet] = useState([]);
-    const masters = [
-        {
-            name: 'Skills Master',
-            fields: ['Skill Name', 'Level', 'Category', 'Active'],
-            data: skillSet,
-        },
-        {
-            name: 'Certificate Master',
-            fields: ['certificateName', 'issuer', 'issueDate', 'fileUrl', 'isActive'],
-            data: certificateSet,
-        },
+    // masters mein data mat rakho
+    const mastersMock = [
+        { name: 'Skills Master', fields: ['Skill Name', 'Level', 'Category', 'Active'] },
+        { name: 'Certificate Master', fields: ['certificateName', 'issuer', 'issueDate', 'fileUrl', 'isActive'] },
     ];
+
+    const [masters, setMasters] = useState(mastersMock);
 
     const activeIdx = masters.findIndex(
         (master) => master.name === activeTab
@@ -69,7 +85,10 @@ const MasterPage = () => {
                     "Active": s.isActive ? "Yes" : "No"
                 }));
                 setSkillSet(formattedSkills);
+                setDataMap(prev => ({ ...prev, "Skills Master": formattedSkills }));
+
                 setPublicApi(prev => ({ ...prev, skills: res.publicApi }));
+                setFilters(res.filterFields);
             } else {
                 toast.error(res.message || "Failed to fetch skills");
             }
@@ -92,6 +111,7 @@ const MasterPage = () => {
                     "isActive": c.isActive ? "Yes" : "No"
                 }));
                 setCertificateSet(formattedCertificates);
+                setDataMap(prev => ({ ...prev, "Certificate Master": formattedCertificates }));
                 setPublicApi(prev => ({ ...prev, certificates: res.publicApi }));
             } else {
                 toast.error(res.message || "Failed to fetch certificates");
@@ -101,6 +121,31 @@ const MasterPage = () => {
         }
     }
 
+    const GetMasters = async () => {
+        try {
+            const res = await ApiCall("/api/masters/master/GetMasters");
+            if (res.status === "success") {
+                const updatedData = res.data.map((master) => ({
+                    name: master.masterName,
+                    fields: master.masterConfig.map((field) => field.fieldName),
+                }));
+
+                setMasters((prev) => [...prev, ...updatedData]);
+
+                // ✅ Har master ka data alag map karo
+                const newDataMap = {};
+                res.data.forEach((master) => {
+                    newDataMap[master.masterName] = master.records || []; // jo bhi data field ho backend se
+                });
+                setDataMap(prev => ({ ...prev, ...newDataMap }));
+                setFieldBind(res.data);
+            } else {
+                toast.error(res.message || "Failed to fetch masters");
+            }
+        } catch (error) {
+            toast.error("An error occurred while fetching masters");
+        }
+    }
 
     const handleSkillAdd = async () => {
         if (!skill.skillName || !skill.level || !skill.category) {
@@ -112,7 +157,6 @@ const MasterPage = () => {
             console.log(res);
             if (res.status === "success") {
                 toast.success(res.message);
-                // setSkillSet((prev) => [...prev, { "Skill Name": skill.skillName, "Level": skill.level, "Category": skill.category, "Active": skill.isActive ? "Yes" : "No" }])
 
                 GetSkills();
                 handleSkillReset();
@@ -161,18 +205,6 @@ const MasterPage = () => {
             if (res.status === "success") {
                 toast.success(res.message);
                 GetCertificates();
-                // setSkillSet((prev) => [...prev, { "Skill Name": skill.skillName, "Level": skill.level, "Category": skill.category, "Active": skill.isActive ? "Yes" : "No" }])
-                // setCertificateSet((prev) => [
-                //     ...prev,
-                //     {
-                //         name: certificate.certificateName,
-                //         issuer: certificate.issuer,
-                //         file: certificate.file?.name ?? certificate.file,
-                //         fileUrl: certificate.fileUrl,
-                //         skillsCovered: certificate.skillsCovered,
-                //         active: certificate.isActive ? "Yes" : "No",
-                //     },
-                // ]);
                 handleCertificateReset();
 
             } else {
@@ -211,9 +243,67 @@ const MasterPage = () => {
         })
     }
 
+    const handleDragStart = (e, idx) => {
+        setDraggingIdx(idx);
+    };
+    const handleDrop = (idx) => {
+        const updatedMaster = [...master.masterConfig];
+        const draggedItem = updatedMaster[draggingIdx];
+        updatedMaster.splice(draggingIdx, 1);
+        updatedMaster.splice(idx, 0, draggedItem);
+        setMaster({ ...master, masterConfig: updatedMaster });
+        setDraggingIdx(null);
+    };
+
+    const handleFieldAdd = () => {
+        console.log("Adding new field");
+        const newField = {
+            fieldId: master.masterConfig.length + 1, // simple incremental ID
+            fieldName: "",
+            fieldType: "text",
+            isRequired: false,
+            fieldComponent: "",
+        };
+        setMaster((prev) => ({
+            ...prev,
+            masterConfig: [...prev.masterConfig, newField],
+        }));
+    };
+
+    const handleSaveMaster = async () => {
+        if (!master.masterName) {
+            toast.error("Master name is required");
+            return;
+        }
+        if (master.masterConfig.length === 0) {
+            toast.error("Please add at least one field to the master");
+            return;
+        }
+
+        const updatedMaster = {
+            ...master,
+            masterConfig: master.masterConfig.map((field) => ({
+                ...field,
+                fieldComponent: mapper[field.fieldType] || Input
+            }))
+        };
+        try {
+            const res = await ApiCall("/api/masters/master/InsertUpdateMaster", updatedMaster);
+            if (res.status === "success") {
+                toast.success(res.message);
+                GetMasters();
+            } else {
+                toast.error(res.message || "Failed to save master");
+            }
+        } catch (error) {
+            toast.error("An error occurred while saving the master");
+        }
+    };
+
     useEffect(() => {
         GetSkills();
         GetCertificates();
+        GetMasters();
     }, []);
 
     return (
@@ -299,24 +389,63 @@ const MasterPage = () => {
                                 }
                             />
                             <CompactFileUploader
-                                key={fileKey} // 👈 forces remount on reset
-                                onChange={(file) =>
-                                    setCertificate((prev) => ({   // 👈 use prev, not stale certificate
-                                        ...prev,
-                                        file: file ?? "",
-                                        fileUrl: file ? URL.createObjectURL(file) : "",
-                                    }))
-                                }
+                                key={fileKey}
+                                onUploaded={(uploadedFile) => {
 
+                                    setCertificate((prev) => ({
+                                        ...prev,
+
+                                        // store full uploaded object
+                                        file: uploadedFile,
+
+                                        // real cloudinary url
+                                        fileUrl: uploadedFile?.url || "",
+                                    }));
+
+                                }}
                             />
                             <DarkModeSwitch label="Active" checked={certificate.isActive} onChange={(val) => setCertificate((prev) => ({ ...prev, isActive: val }))} />
                         </Box>}
+
+                        {
+                            fieldBind.length > 0 && fieldBind.map((master) => (
+                                master.masterName === activeTab && <Box key={master.masterName} title={`${master.masterName} Configuration`}>
+                                    {master.masterConfig.map((field) => {
+                                        const Component = ComponentMapper[mapper[field.fieldType]] || Input;
+                                        return (
+                                            <div key={field.fieldId} className="mb-4">
+                                                <Component
+                                                    label={field.fieldName}
+                                                    placeholder={`Enter ${field.fieldName}`}
+                                                    onChange={(e) => {
+                                                        const val = e.target ? e.target.value : e;
+                                                        setMaster((prev) => ({
+                                                            ...prev,
+                                                            masterConfig: prev.masterConfig.map((f) =>
+                                                                f.fieldId === field.fieldId ? { ...f, fieldValue: val } : f
+                                                            ),
+                                                        }));
+                                                    }}
+
+                                                    value={master.masterConfig.find((f) => f.fieldId === field.fieldId)?.fieldValue || ""}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </Box>
+                            ))
+
+
+
+
+                        }
                         <DataTable
                             fields={masters[activeIdx]?.fields}
-                            data={masters[activeIdx]?.data}
-                            totalRecords={masters[activeIdx]?.data?.length || 0}
+                            data={dataMap[activeTab] || []}
+                            totalRecords={dataMap[activeTab]?.length || 0}
                             onEdit={(id) => activeTab === "Skills Master" ? GetSkillById(id) : null}
                             onDelete={(id) => activeTab === "Skills Master" ? DeleteSkill(id) : null}
+                            filters={filters}
                         />
                     </div>
                 </>
@@ -339,7 +468,9 @@ const MasterPage = () => {
                         </div>
                         <div className="flex gap-3">
                             <button onClick={() => setShowBuilder(false)} className="px-5 py-2 text-sm font-medium text-zinc-400 hover:text-white transition-colors">Cancel</button>
-                            <button className="bg-violet-600 hover:bg-violet-700 px-6 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-violet-600/20">Save Master</button>
+                            <button className="bg-violet-600 hover:bg-violet-700 px-6 py-2 rounded-xl text-sm font-semibold shadow-lg shadow-violet-600/20" onClick={handleSaveMaster}>
+                                Save Master
+                            </button>
                         </div>
                     </div>
 
@@ -355,7 +486,7 @@ const MasterPage = () => {
                                 </div>
                                 <div className="ml-12 max-w-2xl">
                                     <label className="block text-sm font-medium text-zinc-400 mb-2">Master Name <span className="text-red-500">*</span></label>
-                                    <input className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 focus:border-violet-500 outline-none text-white transition-all" placeholder="e.g. Employee Master" />
+                                    <input className="w-full bg-zinc-900 border border-zinc-800 rounded-xl p-3 focus:border-violet-500 outline-none text-white transition-all" placeholder="e.g. Employee Master" onChange={(e) => setMaster({ ...master, masterName: e.target.value })} value={master.masterName} />
                                 </div>
                             </section>
 
@@ -365,7 +496,7 @@ const MasterPage = () => {
                                         <span className="w-8 h-8 rounded-full bg-violet-600/20 text-violet-500 flex items-center justify-center font-bold border border-violet-500/30">2</span>
                                         <h3 className="text-xl font-semibold">Define Fields</h3>
                                     </div>
-                                    <button className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-4 py-2 rounded-xl text-sm transition-all">
+                                    <button className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 px-4 py-2 rounded-xl text-sm transition-all" onClick={handleFieldAdd}>
                                         <Plus size={16} /> Add Field
                                     </button>
                                 </div>
@@ -382,26 +513,35 @@ const MasterPage = () => {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-zinc-800/50 text-sm">
-                                            {[1, 2, 3].map((item) => (
-                                                <tr key={item} className="group hover:bg-zinc-900/40">
+                                            {master.masterConfig.map((item, idx) => (
+                                                <tr key={item.fieldId} className="group hover:bg-zinc-900/40" onDragStart={(e) => handleDragStart(e, idx)} onDragOver={(e) => { e.preventDefault(); console.log('Drag over', e); }} onDrop={() => handleDrop(idx)} draggable>
                                                     <td className="p-4">
                                                         <div className="flex items-center gap-3 text-zinc-600">
                                                             <GripVertical size={14} className="cursor-grab" />
-                                                            {item}
+                                                            {item.fieldId || idx + 1}
                                                         </div>
                                                     </td>
                                                     <td className="p-3">
-                                                        <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 focus:border-violet-500 outline-none transition-all" defaultValue={item === 1 ? "Employee Name" : ""} />
+                                                        <input className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 focus:border-violet-500 outline-none transition-all" defaultValue={item === 1 ? "Employee Name" : ""} onChange={(e) => setMaster((prev) => ({
+                                                            ...prev,
+                                                            masterConfig: prev.masterConfig.map((f, i) => f.fieldId === item.fieldId ? { ...f, fieldName: e.target.value } : f)
+                                                        }))} value={item.fieldName} />
                                                     </td>
                                                     <td className="p-3">
-                                                        <select className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 outline-none">
+                                                        <select className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 outline-none" value={item.fieldType} onChange={(e) => setMaster((prev) => ({
+                                                            ...prev,
+                                                            masterConfig: prev.masterConfig.map((f, i) => f.fieldId === item.fieldId ? { ...f, fieldType: e.target.value } : f)
+                                                        }))} value={item.fieldType}>
                                                             <option>Text</option>
                                                             <option>Number</option>
                                                             <option>Date</option>
                                                         </select>
                                                     </td>
                                                     <td className="p-3 text-center">
-                                                        <input type="checkbox" className="w-4 h-4 accent-violet-600" />
+                                                        <input type="checkbox" className="w-4 h-4 accent-violet-600" onChange={(e) => setMaster((prev) => ({
+                                                            ...prev,
+                                                            masterConfig: prev.masterConfig.map((f, i) => f.fieldId === item.fieldId ? { ...f, isRequired: e.target.checked } : f)
+                                                        }))} checked={item.isRequired} />
                                                     </td>
                                                     <td className="p-3 text-center">
                                                         <button className="p-2 text-zinc-600 hover:text-red-500 transition-colors">
@@ -433,7 +573,7 @@ const MasterPage = () => {
                                     { label: 'Checkbox', icon: '☑', desc: 'True or false' },
                                     { label: 'File Upload', icon: '↑', desc: 'Images or docs' }
                                 ].map((type) => (
-                                    <div key={type.label} className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-2xl hover:border-violet-500/50 hover:bg-zinc-800 cursor-pointer transition-all group">
+                                    <div key={type.label} className="bg-zinc-900/80 border border-zinc-800 p-3 rounded-2xl hover:border-violet-500/50 hover:bg-zinc-800 cursor-pointer transition-all group" draggable>
                                         <div className="flex gap-4 items-center">
                                             <div className="w-10 h-10 bg-zinc-800 group-hover:bg-violet-600/20 flex items-center justify-center rounded-xl font-bold text-zinc-400 group-hover:text-violet-400 transition-colors">
                                                 {type.icon}

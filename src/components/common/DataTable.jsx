@@ -1,11 +1,28 @@
 import { Pencil, Trash, Trash2 } from 'lucide-react';
 import React, { useEffect } from 'react';
+import Select from './SelectInput';
+import { useState } from 'react';
 
 
-const DataTable = ({ fields, data, itemsPerPage = 10, totalRecords = 0, onEdit, onDelete }) => {
+const DataTable = ({ fields, data, itemsPerPage = 10, totalRecords = 0, onEdit, onDelete, filters }) => {
+
+    const [filteredData, setFilteredData] = useState(data);
+    const [filtter, setFiltter] = useState({});
+    const handleFilterChange = (field, value) => {
+        console.log(`Filter changed: ${field} = ${value}`);
+        console.log("Current data before filtering:", data);
+        setFiltter(prev => ({ ...prev, [field]: value }));
+        const newFilteredData = data.filter(item => {
+            if (value.length === 0) return true;
+            return value === item[field]; // Adjust this condition based on your filter logic (e.g., for multi-select, use includes)
+        });
+        setFilteredData(newFilteredData);
+    };
+
 
     useEffect(() => {
         console.log("DataTable Rendered with data:", data);
+        setFilteredData(data);
     }, [data]);
     return (
         <div className="bg-[#0a0a0a] border border-zinc-800/50 rounded-2xl overflow-hidden shadow-sm">
@@ -18,8 +35,24 @@ const DataTable = ({ fields, data, itemsPerPage = 10, totalRecords = 0, onEdit, 
                         className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-violet-500"
                     />
                 </div>
+                {
+                    filters && filters.length > 0 && <div className="flex items-center gap-3 w-1/3">
+                        {
+                            filters.map((filter, idx) => (
+                                <Select
+                                    key={idx}
+                                    placeholder={filter.field}
+                                    options={filter.options}
+                                    value={filtter[filter.field]}
+                                    onChange={(val) => handleFilterChange(filter.field, val)}
+                                />
+                            ))
+                        }
+
+                    </div>
+                }
                 <div className="flex gap-2 items-center text-xs text-zinc-500">
-                    <span>Showing 1-{data?.length} of {totalRecords}</span>
+                    <span>Showing 1-{filteredData?.length} of {totalRecords}</span>
                     <div className="flex gap-1 ml-4">
                         <button className="p-1.5 hover:bg-zinc-800 rounded border border-zinc-800 transition-colors">Prev</button>
                         <button className="p-1.5 hover:bg-zinc-800 rounded border border-zinc-800 transition-colors">Next</button>
@@ -41,7 +74,7 @@ const DataTable = ({ fields, data, itemsPerPage = 10, totalRecords = 0, onEdit, 
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-zinc-900/50">
-                        {data?.map((row, idx) => (
+                        {filteredData?.map((row, idx) => (
                             <tr key={idx} className="hover:bg-zinc-900/30 transition-colors group">
                                 <td className="px-6 py-4 text-xs text-zinc-500 flex gap-2">
                                     <button onClick={() => onEdit(row["Skill ID"] || row._id)}>
