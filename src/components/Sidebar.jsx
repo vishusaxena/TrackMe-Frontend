@@ -40,7 +40,7 @@ const Sidebar = () => {
 
         { icon: <Boxes size={18} />, label: 'MASTERS', path: "/dashboard/master", active: true },
 
-        { icon: <BookOpen size={18} />, label: 'STUDY OS', path: "/dashboard/study", active: false },
+        { icon: <BookOpen size={18} />, label: 'STUDY OS', path: "/dashboard/study", active: true },
 
         { icon: <Lightbulb size={18} />, label: 'INNOVATION LAB', path: "/dashboard/lab", active: false },
 

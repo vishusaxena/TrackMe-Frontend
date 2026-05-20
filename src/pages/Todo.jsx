@@ -296,46 +296,77 @@ const Todo = () => {
                   .map((todo, j) => (
                     <div
                       key={todo._id || j}
-                      className="bg-zinc-900 border border-white/5 p-4 rounded-xl group transition-all hover:border-violet-500/50 shadow-lg"
+                      className="relative bg-zinc-950/40 border border-white/5 p-5 rounded-2xl group transition-all duration-300 hover:border-violet-500/30 hover:bg-zinc-900/40 shadow-xl backdrop-blur-xs select-none active:scale-[0.98] active:rotate-1"
                       draggable
                       onDragStart={() => handleDragStart(todo._id)}
                       onDragEnd={handleDragEnd}
                     >
-                      {/* Priority Indicator & Actions Header */}
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex flex-col gap-1">
-                          <h3 className="text-sm font-bold text-zinc-100 leading-none">
+                      {/* Gradient Ambient Glow Effect on Hover */}
+                      <div className="absolute inset-0 rounded-2xl bg-linear-to-b from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none" />
+
+                      {/* Header Section */}
+                      <div className="relative z-10 flex justify-between items-start gap-3">
+                        <div className="flex flex-col gap-1.5 flex-1">
+                          {/* Priority Indicator Micro-Badge */}
+                          <div className="flex items-center gap-2">
+                            <span className={`w-1.5 h-1.5 rounded-full ${todo.priority === 'High' ? 'bg-rose-500 shadow-[0_0_8px_#f43f5e]' : 'bg-amber-500 shadow-[0_0_8px_#f59e0b]'
+                              }`} />
+                            <span className={`text-[9px] uppercase tracking-[0.15em] font-black ${todo.priority === 'High' ? 'text-rose-400' : 'text-amber-400'
+                              }`}>
+                              {todo.priority}
+                            </span>
+                          </div>
+
+                          <h3 className="text-sm font-bold text-zinc-200 tracking-tight leading-snug group-hover:text-white transition-colors line-clamp-2">
                             {todo.taskName}
                           </h3>
-                          <span className={`text-[10px] uppercase tracking-wider font-bold ${todo.priority === 'High' ? 'text-rose-500' : 'text-amber-500'
-                            }`}>
-                            {todo.priority} Priority
-                          </span>
                         </div>
 
-                        {/* Actions: Eye, Edit, Delete (Visible on Hover for a cleaner look) */}
-                        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-white transition-colors" onClick={() => GetTodoDetailById(todo._id)}>
-                            <Eye size={14} />
+                        {/* Actions Menu (Glows & slides into visibility slightly on card hover) */}
+                        <div className="flex items-center gap-1 bg-zinc-900/80 backdrop-blur-sm border border-white/5 p-1 rounded-xl opacity-0 group-hover:opacity-100 translate-x-2 group-hover:translate-x-0 transition-all duration-300 shrink-0 shadow-lg">
+                          <button
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-white/5 transition-all duration-200"
+                            onClick={() => GetTodoDetailById(todo._id)}
+                            title="View Details"
+                          >
+                            <Eye size={13} />
                           </button>
-                          <button className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-violet-400 transition-colors" onClick={() => EditTodo(todo._id)}>
-                            <Edit size={14} />
+                          <button
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-violet-400 hover:bg-violet-500/10 transition-all duration-200"
+                            onClick={() => EditTodo(todo._id)}
+                            title="Edit Task"
+                          >
+                            <Edit size={13} />
                           </button>
-                          <button className="p-1.5 hover:bg-zinc-800 rounded-md text-zinc-400 hover:text-rose-500 transition-colors" onClick={() => DeleteTodo(todo._id)}>
-                            <Trash size={14} />
+                          <button
+                            className="p-1.5 rounded-lg text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all duration-200"
+                            onClick={() => DeleteTodo(todo._id)}
+                            title="Delete Task"
+                          >
+                            <Trash size={13} />
                           </button>
                         </div>
                       </div>
 
-                      {/* Dates Section */}
-                      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-white/5">
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-zinc-500 uppercase font-medium">Start Date</span>
-                          <span className="text-xs text-zinc-300">{todo.startDate || 'N/A'}</span>
+                      {/* Dates Timeline Block */}
+                      <div className="relative z-10 flex items-center justify-between gap-2 mt-5 pt-3.5 border-t border-white/5">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Start</span>
+                          <span className="text-xs font-medium text-zinc-400 font-mono">
+                            {todo.startDate ? todo.startDate.split('-').slice(1).join('/') : '—'}
+                          </span>
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-[10px] text-zinc-500 uppercase font-medium">End Date</span>
-                          <span className="text-xs text-zinc-300">{todo.endDate || 'N/A'}</span>
+
+                        {/* Elegant connecting line layout */}
+                        <div className="flex-1 flex items-center justify-center px-2 opacity-20">
+                          <div className="w-full h-px bg-linear-to-r from-transparent via-zinc-400 to-transparent dashed" />
+                        </div>
+
+                        <div className="flex flex-col gap-0.5 text-right">
+                          <span className="text-[9px] text-zinc-500 uppercase font-bold tracking-wider">Deadline</span>
+                          <span className="text-xs font-medium text-zinc-300 font-mono">
+                            {todo.endDate ? todo.endDate.split('-').slice(1).join('/') : '—'}
+                          </span>
                         </div>
                       </div>
                     </div>

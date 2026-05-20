@@ -22,6 +22,7 @@ const InnovationLab = React.lazy(() => import("./pages/InnovationLab"));
 const ComingSoon = React.lazy(() => import("./pages/CommingSoon"));
 const Profile = React.lazy(() => import("./pages/Profile"));
 const Settings = React.lazy(() => import("./pages/Settings"));
+const Track = React.lazy(() => import("./pages/Track"));
 
 const App = () => {
 
@@ -59,7 +60,7 @@ const App = () => {
               <Route path="projects" element={<Projects />} />
               <Route path="journal" element={<Blogs />} />
               <Route path="master" element={<MasterPage />} />
-              <Route path="study" element={<StudyPlan />} />
+              <Route path="study" element={<Track />} />
               <Route path="lab" element={<InnovationLab />} />
               <Route path="settings" element={<Settings />} />
               <Route path="*" element={<ComingSoon />} />
